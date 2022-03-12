@@ -255,7 +255,7 @@ struct packageRx {
 
 // Create a variable with the above structure
 package data;
-package dataRx;
+packageRx dataRx;
 
 unsigned long currentMillis = millis();
 
