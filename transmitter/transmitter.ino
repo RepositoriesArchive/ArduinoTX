@@ -84,6 +84,7 @@ MCP3008 adc;
 #define GREY    0xE73C
 #define ORANGE  0xFBA0
 #define GREEN   0x2685
+#define BLACK   0x0000
 
 // initialize ILI9341 TFT library
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
@@ -327,10 +328,10 @@ void setup() {
 
   // TFT INIT
   pinMode(TFT_LCD, OUTPUT);
-  analogWrite(TFT_LCD, 10);//11
+  analogWrite(TFT_LCD, 40);//11
 
   tft.begin();
-  tft.fillScreen(ILI9341_BLACK);
+  tft.fillScreen(BLACK);
   tft.setRotation(45);
 
   tftHomepage();
@@ -550,6 +551,54 @@ void loop() {
 
   // Send the whole data from the structure to the receiver
   radioTx.write(&data, sizeof(package));
+
+  lcdUpdate(data.j1u, data.j1d, data.j2u, data.j2d, data.j1l, data.j1r, data.j2l, data.j2r, voltage);
+}
+
+void lcdUpdate(
+  int var1, int var2, int var3, int var4, int var5, int var6, int var7, int var8, float voltage
+) {
+  // LCD Update
+  tft.setTextSize(7);
+  tft.setTextColor(WHITE, BLACK);
+  tft.setCursor(18, 50);
+
+  tft.print(addDigits(var1, var2, 3));
+  tft.setTextColor(GREY, BLACK);
+  tft.print(" ");
+  tft.setTextColor(WHITE, BLACK);
+  tft.print(addDigits(var3, var4, 3));
+
+  /*  LEFT/RIGHT  */
+  tft.setTextSize(7);
+  tft.setTextColor(WHITE, BLACK);
+  tft.setCursor(18, 110);
+  tft.print(addDigits(var5, var6, 3));
+  tft.setTextColor(GREY, BLACK);
+  tft.print(" ");
+  tft.setTextColor(WHITE, BLACK);
+  tft.print(addDigits(var7, var8, 3));
+
+
+  /*  Voltage Tx  */
+  tft.setTextSize(1);
+  tft.setTextColor(GREY, BLACK);
+  tft.setCursor(50, 195);
+  tft.print("Voltage TX: ");
+  tft.setTextColor(SKY, BLACK);
+  tft.print(valRound(voltage));
+  tft.print("v");
+
+  tft.print("  ");     //  Separator
+
+  /*  Voltage Rx  */
+  tft.setTextSize(1);
+  tft.setCursor(180, 195);
+  tft.setTextColor(GREY);
+  tft.print("Voltage RX: ");
+  tft.setTextColor(SKY);
+  tft.print("0.0");
+  tft.print("v");
 }
 
 /**
@@ -629,7 +678,7 @@ void defaultValues() {
 */
 void tftHomepage()  {
   CurrentPage     =   "Homepage";
-  StatusBarColor  =   ILI9341_BLACK;
+  StatusBarColor  =   BLACK;
   MenuColor       =   StatusBarColor;
   TextColor       =   TextColor;
   drawDashBoard();  //  Draw DashBoard
@@ -645,26 +694,6 @@ void drawDashBoard()  {
   tft.setTextSize(3);
   tft.setTextColor(GREY);
   tft.println("ArduinoTX");
-
-  /*  TOP/DOWN  */
-  tft.setTextSize(7);
-  tft.setTextColor(WHITE);
-  tft.setCursor(18, 50);
-  tft.print("000");
-  tft.setTextColor(GREY);
-  tft.print(" ");
-  tft.setTextColor(WHITE);
-  tft.print("000");
-
-  /*  LEFT/RIGHT  */
-  tft.setTextSize(7);
-  tft.setTextColor(WHITE);
-  tft.setCursor(18, 110);
-  tft.print("000");
-  tft.setTextColor(GREY);
-  tft.print(" ");
-  tft.setTextColor(WHITE);
-  tft.print("000");
 
   /*  RX Status  */
   tft.setTextSize(1);
@@ -694,23 +723,42 @@ void drawDashBoard()  {
     tft.print("OFF");
   }
 
-  /*  Voltage Tx  */
-  tft.setTextSize(1);
-  tft.setTextColor(GREY);
-  tft.setCursor(50, 195);
-  tft.print("Voltage TX: ");
-  tft.setTextColor(ORANGE);
-  tft.print("4.0");
-  tft.print("v");
+}
 
-  tft.print("  ");     //  Separator
+String addDigits(int val1, int val2, int width) {
+  int len = 0;
+  int value;
+  if (val1 > 0 ) {
+    value = val1;
+  } else {
+    value = val2;
+  }
 
-  /*  Voltage Rx  */
-  tft.setTextSize(1);
-  tft.setCursor(180, 195);
-  tft.setTextColor(GREY);
-  tft.print("Voltage RX: ");
-  tft.setTextColor(SKY);
-  tft.print("4.0");
-  tft.print("v");
+  String newString;
+  String zero = "0";
+
+  if (value > 9999)
+    len = 5;
+  else if (value > 999)
+    len = 4;
+  else if (value > 99)
+    len = 3;
+  else if (value > 9)
+    len = 2;
+  else
+    len = 1;
+
+  if (len < width) {
+    len = width - len;
+    while (len--) {
+      newString += zero;
+    }
+  }
+
+  newString += value;
+  return newString;
+}
+
+float valRound(float val) {
+  return round(val * 100.0) / 100.0;
 }
