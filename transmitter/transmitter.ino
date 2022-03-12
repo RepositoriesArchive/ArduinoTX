@@ -7,7 +7,7 @@
 #include <MCP3XXX.h>
 #include <Adafruit_GFX.h>       // include Adafruit graphics library
 #include <Adafruit_ILI9341.h>   // include Adafruit ILI9341 TFT library
-
+#include <EEPROM.h> //  To save data on EEPROM
 bool debug = true;
 
 MCP3008 adc;
@@ -78,9 +78,20 @@ MCP3008 adc;
 #define TFT_CS    1
 #define TFT_LCD   12
 
+// Colours
+#define SKY     0x667F // nice light blue
+#define WHITE   0xFFFF
+#define GREY    0xE73C
+#define ORANGE  0xFBA0
+#define GREEN   0x2685
+
 // initialize ILI9341 TFT library
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
-/** -------- */
+String CurrentPage;
+String PrevPage;
+int StatusBarColor = SKY;
+int MenuColor;
+int TextColor =  WHITE;
 
 /**
    nRF24L01
@@ -88,21 +99,25 @@ Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 #define RX_CE 13
 #define RX_CSN 14
 #define RX_CHANNEL 108  // 2.508 Ghz - Above most Wifi Channels
+bool RX_STATUS;
 
 #define TX_CE 23
 #define TX_CSN 22
 #define TX_CHANNEL 108  // 2.508 Ghz - Above most Wifi Channels
+bool TX_STATUS;
 
 //TX Setup
 const byte address[6] = "00001";
 const char text[] = "Hello World";
 char textRx[32] = "";
 
-RF24 radioTx(TX_CE, TX_CSN);
 RF24 radioRx(RX_CE, RX_CSN);
+RF24 radioTx(TX_CE, TX_CSN);
+
 /** -------- */
 
 float voltage;
+#define VOLTAGE_PIN 27
 
 unsigned long lastReceiveTime = 0;
 unsigned long currentTime = 0;
@@ -176,19 +191,129 @@ struct package {
   byte transmitterTime;
 };
 
+// Store the current values
+struct packageRx {
+  // Left Switch
+  byte s1;
+
+  // Left Pot
+  byte p1;
+
+  // Left Joystick
+  byte j1u; // Up
+  byte j1d; // Down
+  byte j1l; // Left
+  byte j1r; // Right
+  byte j1b; // Button
+
+  // Left Thumb Joystick
+  byte tj1u; // Up
+  byte tj1d; // Down
+  byte tj1l; // Left
+  byte tj1r; // Right
+
+  // Left Btn
+  byte b1;
+
+  // Right Switch
+  byte s2;
+
+  // Right Pot
+  byte p2;
+
+  // Right Joystick
+  byte j2u; // Up
+  byte j2d; // Down
+  byte j2l; // Left
+  byte j2r; // Right
+  byte j2b; // Button
+
+  // Right Thumb Joystick
+  byte tj2u; // Up
+  byte tj2d; // Down
+  byte tj2l; // Left
+  byte tj2r; // Right
+
+  // Right Btn
+  byte b2;
+
+  // Rotary Encoder
+  byte re;
+
+  // Rotary Encoder - Push
+  byte rep;
+
+  // Green Btn
+  byte gb;
+
+  // Red Btn
+  byte rb;
+
+  // Transmitter Time
+  byte transmitterTime;
+};
+
 // Create a variable with the above structure
 package data;
 package dataRx;
 
+unsigned long currentMillis = millis();
+
 void setup() {
+  /**
+     Set the default values
+  */
+  defaultValues();
+
   if (debug) {
     /* Serial Port */
-    Serial.begin(57600);
+    Serial.begin(115200);
+  }
+
+  /**
+    radioTx Init
+  */
+  radioTx.begin();
+  radioTx.setPALevel(RF24_PA_MIN);  // Reduce Power Consumption
+  radioTx.setDataRate(RF24_250KBPS);  // Reduce Power Consumption
+  radioTx.setChannel(TX_CHANNEL);  // 2.508 Ghz - Above most Wifi Channels
+  radioTx.openWritingPipe(address);
+  radioTx.stopListening();
+
+  if (debug) {
+    printf_begin();
+    radioTx.printDetails();
+    Serial.print("TX Connection Status: ");
+    Serial.println(radioTx.isChipConnected());
+  }
+  if (radioTx.isChipConnected()) {
+    TX_STATUS = true;
+  }
+
+  /**
+     radioRx Set-Up
+  */
+  radioRx.begin();
+  radioRx.setPALevel(RF24_PA_MIN);  // Reduce Power Consumption
+  radioRx.setDataRate(RF24_250KBPS);  // Reduce Power Consumption
+  radioRx.setChannel(RX_CHANNEL);  // 2.508 Ghz - Above most Wifi Channels
+  radioRx.openReadingPipe(0, address);
+  radioRx.startListening();
+
+  if (debug) {
+    printf_begin();
+    radioRx.printDetails();
+    Serial.print("RX Connection Status: ");
+    Serial.println(radioRx.isChipConnected());
+  }
+  if (radioRx.isChipConnected()) {
+    RX_STATUS = true;
   }
 
   /**
      Activate the Arduino internal pull-up resistors
   */
+  pinMode(VOLTAGE_PIN, INPUT);
   pinMode(8, INPUT);
   pinMode(10, INPUT_PULLUP);
   pinMode(11, INPUT_PULLUP);
@@ -202,50 +327,14 @@ void setup() {
 
   // TFT INIT
   pinMode(TFT_LCD, OUTPUT);
-  analogWrite(TFT_LCD, 5);
+  analogWrite(TFT_LCD, 10);//11
+
   tft.begin();
   tft.fillScreen(ILI9341_BLACK);
   tft.setRotation(45);
-  testText();
 
-  /**
-    radioTx Init
-  */
-  radioTx.begin();
-  radioTx.setPALevel(RF24_PA_MIN);  // Reduce Power Consumption
-  radioTx.setDataRate(RF24_250KBPS);  // Reduce Power Consumption
-  radioTx.setChannel(TX_CHANNEL);
-  radioTx.openWritingPipe(address);
-  radioTx.stopListening();
+  tftHomepage();
 
-  if (debug) {
-    printf_begin();
-    radioTx.printDetails();
-    Serial.print("TX Connection Status: ");
-    Serial.println(radioTx.isChipConnected());
-  }
-
-  /**
-     radioRx Set-Up
-  */
-  radioRx.begin();
-  radioRx.setPALevel(RF24_PA_MIN);  // Reduce Power Consumption
-  radioRx.setDataRate(RF24_250KBPS);  // Reduce Power Consumption
-  radioRx.setChannel(RX_CHANNEL);
-  radioRx.openReadingPipe(0, address);
-  radioRx.startListening();
-
-  if (debug) {
-    printf_begin();
-    radioRx.printDetails();
-    Serial.print("RX Connection Status: ");
-    Serial.println(radioRx.isChipConnected());
-  }
-
-  /**
-     Set the default values
-  */
-  defaultValues();
 }
 
 
@@ -265,10 +354,12 @@ int joystickRead(float value, int diff) {
 }
 
 void loop() {
+  voltage = analogRead(VOLTAGE_PIN);
+  voltage = voltage * (5 / 1023.00);
 
   /* Transmission Message */
   if (radioRx.available()) {
-    radioRx.read(&dataRx, sizeof(package));
+    radioRx.read(&dataRx, sizeof(packageRx));
     /**
        If data received, update the lastReceiveTime
     */
@@ -280,93 +371,102 @@ void loop() {
          Either use the default data or adjust to some safe values based on your device
       */
     }
+
     if (debug) {
+      Serial.print("v: ");
+      Serial.print(analogRead(VOLTAGE_PIN));
+      Serial.print(";");
+
+      Serial.print("v: ");
+      Serial.print(voltage);
+      Serial.print(";");
+
       Serial.print("s1: ");
-      Serial.print(data.s1);
+      Serial.print(dataRx.s1);
       Serial.print(";");
 
       Serial.print("p1: ");
-      Serial.print(data.p1);
+      Serial.print(dataRx.p1);
       Serial.print(";");
 
       Serial.print("j1ud: ");
-      Serial.print(data.j1u);
+      Serial.print(dataRx.j1u);
       Serial.print(":");
-      Serial.print(data.j1d);
+      Serial.print(dataRx.j1d);
       Serial.print(";");
 
       Serial.print("j1lr: ");
-      Serial.print(data.j1l);
+      Serial.print(dataRx.j1l);
       Serial.print(":");
-      Serial.print(data.j1r);
+      Serial.print(dataRx.j1r);
       Serial.print(";");
 
       Serial.print("j1b: ");
-      Serial.print(data.j1b);
+      Serial.print(dataRx.j1b);
       Serial.print(";");
 
       Serial.print("tj1ud: ");
-      Serial.print(data.tj1u);
+      Serial.print(dataRx.tj1u);
       Serial.print(":");
-      Serial.print(data.tj1d);
+      Serial.print(dataRx.tj1d);
       Serial.print(";");
 
       Serial.print("tj1lr: ");
-      Serial.print(data.tj1l);
+      Serial.print(dataRx.tj1l);
       Serial.print(":");
-      Serial.print(data.tj1r);
+      Serial.print(dataRx.tj1r);
       Serial.print(";");
 
       Serial.print("b1: ");
-      Serial.print(data.b1);
+      Serial.print(dataRx.b1);
       Serial.print(";");
 
       Serial.print("s2: ");
-      Serial.print(data.s2);
+      Serial.print(dataRx.s2);
       Serial.print(";");
 
       Serial.print("p2: ");
-      Serial.print(data.p2);
+      Serial.print(dataRx.p2);
       Serial.print(";");
 
       Serial.print("j2u: ");
-      Serial.print(data.j2u);
+      Serial.print(dataRx.j2u);
       Serial.print(":");
-      Serial.print(data.j2d);
+      Serial.print(dataRx.j2d);
       Serial.print(";");
 
       Serial.print("j2l: ");
-      Serial.print(data.j2l);
+      Serial.print(dataRx.j2l);
       Serial.print(":");
-      Serial.print(data.j2r);
+      Serial.print(dataRx.j2r);
       Serial.print(";");
 
       Serial.print("j2b: ");
-      Serial.print(data.j2b);
+      Serial.print(dataRx.j2b);
       Serial.print(";");
 
       Serial.print("tj2u: ");
-      Serial.print(data.tj2u);
+      Serial.print(dataRx.tj2u);
       Serial.print(":");
-      Serial.print(data.tj2d);
+      Serial.print(dataRx.tj2d);
       Serial.print(";");
 
       Serial.print("tj2l: ");
-      Serial.print(data.tj2l);
+      Serial.print(dataRx.tj2l);
       Serial.print(":");
-      Serial.print(data.tj2r);
+      Serial.print(dataRx.tj2r);
       Serial.print(";");
 
       Serial.print("b2: ");
-      Serial.print(data.b2);
+      Serial.print(dataRx.b2);
       Serial.print(";");
 
       Serial.print("gb: ");
-      Serial.print(data.gb);
+      Serial.print(dataRx.gb);
       Serial.print(";");
 
       Serial.print("rb: ");
-      Serial.print(data.rb);
+      Serial.print(dataRx.rb);
       Serial.print(";");
 
       Serial.println();
@@ -452,6 +552,9 @@ void loop() {
   radioTx.write(&data, sizeof(package));
 }
 
+/**
+   Set the default values
+*/
 void defaultValues() {
   // Left Switch
   data.s1 = 1;
@@ -515,12 +618,99 @@ void defaultValues() {
   // Joystick Read
   joystick.val1 = 0;
   joystick.val2 = 0;
+
+  // RX & TX Status
+  RX_STATUS = false;
+  TX_STATUS = false;
 }
 
+/**
+   TFT Pages
+*/
+void tftHomepage()  {
+  CurrentPage     =   "Homepage";
+  StatusBarColor  =   ILI9341_BLACK;
+  MenuColor       =   StatusBarColor;
+  TextColor       =   TextColor;
+  drawDashBoard();  //  Draw DashBoard
+  PrevPage        =   CurrentPage;    //  Reset Previous Page variable
+}
 
-unsigned long testText() {
-  tft.setCursor(0, 0);
-  tft.setTextColor(ILI9341_WHITE);
-  tft.setTextSize(2);
-  tft.println("Hello World!");
+/**
+   Dashboard Items
+*/
+void drawDashBoard()  {
+  //  tft.setCursor(110, 45);
+  tft.setCursor(80, 7);
+  tft.setTextSize(3);
+  tft.setTextColor(GREY);
+  tft.println("ArduinoTX");
+
+  /*  TOP/DOWN  */
+  tft.setTextSize(7);
+  tft.setTextColor(WHITE);
+  tft.setCursor(18, 50);
+  tft.print("000");
+  tft.setTextColor(GREY);
+  tft.print(" ");
+  tft.setTextColor(WHITE);
+  tft.print("000");
+
+  /*  LEFT/RIGHT  */
+  tft.setTextSize(7);
+  tft.setTextColor(WHITE);
+  tft.setCursor(18, 110);
+  tft.print("000");
+  tft.setTextColor(GREY);
+  tft.print(" ");
+  tft.setTextColor(WHITE);
+  tft.print("000");
+
+  /*  RX Status  */
+  tft.setTextSize(1);
+  tft.setTextColor(GREY);
+  tft.setCursor(50, 180);
+  tft.print("RX Status: ");
+  if (RX_STATUS) {
+    tft.setTextColor(GREEN);
+    tft.print("ON");
+  } else {
+    tft.setTextColor(ORANGE);
+    tft.print("OFF");
+  }
+
+  tft.print("  ");     //  Separator
+
+  /*  TX Status  */
+  tft.setCursor(180, 180);
+  tft.setTextColor(GREY);
+  tft.print("TX Status: ");
+  tft.setTextColor(SKY);
+  if (TX_STATUS) {
+    tft.setTextColor(GREEN);
+    tft.print("ON");
+  } else {
+    tft.setTextColor(ORANGE);
+    tft.print("OFF");
+  }
+
+  /*  Voltage Tx  */
+  tft.setTextSize(1);
+  tft.setTextColor(GREY);
+  tft.setCursor(50, 195);
+  tft.print("Voltage TX: ");
+  tft.setTextColor(ORANGE);
+  tft.print("4.0");
+  tft.print("v");
+
+  tft.print("  ");     //  Separator
+
+  /*  Voltage Rx  */
+  tft.setTextSize(1);
+  tft.setCursor(180, 195);
+  tft.setTextColor(GREY);
+  tft.print("Voltage RX: ");
+  tft.setTextColor(SKY);
+  tft.print("4.0");
+  tft.print("v");
 }
