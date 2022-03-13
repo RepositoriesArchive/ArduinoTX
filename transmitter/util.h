@@ -9,17 +9,17 @@ void defaultValues() {
   data.p1 = 127;
 
   // Left Joystick
-  data.j1u = 127; // Up
-  data.j1d = 127; // Down
-  data.j1l = 127; // Left
-  data.j1r = 127; // Right
+  data.j1u = 0; // Up
+  data.j1d = 0; // Down
+  data.j1l = 0; // Left
+  data.j1r = 0; // Right
   data.j1b = 1; // Button
 
   // Left Thumb Joystick
-  data.tj1u = 127; // Up
-  data.tj1d = 127; // Down
-  data.tj1l = 127; // Left
-  data.tj1r = 127; // Right
+  data.tj1u = 0; // Up
+  data.tj1d = 0; // Down
+  data.tj1l = 0; // Left
+  data.tj1r = 0; // Right
 
   // Left Btn
   data.b1 = 1;
@@ -31,17 +31,17 @@ void defaultValues() {
   data.p2 = 127;
 
   // Right Joystick
-  data.j2u = 127; // Up
-  data.j2d = 127; // Down
-  data.j2l = 127; // Left
-  data.j2r = 127; // Right
+  data.j2u = 0; // Up
+  data.j2d = 0; // Down
+  data.j2l = 0; // Left
+  data.j2r = 0; // Right
   data.j2b = 1; // Button
 
   // Right Thumb Joystick
-  data.tj2u = 127; // Up
-  data.tj2d = 127; // Down
-  data.tj2l = 127; // Left
-  data.tj2r = 127; // Right
+  data.tj2u = 0; // Up
+  data.tj2d = 0; // Down
+  data.tj2l = 0; // Left
+  data.tj2r = 0; // Right
 
   // Right Btn
   data.b2 = 1;

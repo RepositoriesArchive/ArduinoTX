@@ -33,7 +33,7 @@ void drawDashBoard()  {
   tft.setCursor(180, 195);
   tft.setTextColor(GREY);
   tft.print("Voltage RX: ");
-  tft.setTextColor(SKY);
+  tft.setTextColor(SKY, BLACK);
   tft.print("0.00");
   tft.print("v");
 
