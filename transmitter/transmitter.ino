@@ -34,24 +34,48 @@ void setup() {
      Set the default values
   */
   defaultValues();
+  defaultValuesRx();
 
   /* Serial Port */
   if (debug)
     Serial.begin(115200);
 
   /**
+     radioRx Set-Up
+  */
+  radioRx.begin();
+  radioRx.setPALevel(RF24_PA_LOW);
+  radioRx.setChannel(RX_CHANNEL);
+  radioRx.setDataRate(RF24_250KBPS);
+  radioRx.setPayloadSize(sizeof(dataRx));
+  radioRx.openReadingPipe(1, address[1]);
+//  radioRx.setAutoAck(false);
+  radioRx.startListening(); // put radio in RX mode
+
+  if (debug) {
+    printf_begin();
+    radioRx.printDetails();
+    radioRx.printPrettyDetails();
+    Serial.print("RX Connection Status: ");
+    Serial.println(radioRx.isChipConnected());
+  }
+
+  /**
     radioTx Init
   */
   radioTx.begin();
-  radioTx.setPALevel(RF24_PA_MIN);  // Reduce Power Consumption
-  radioTx.setDataRate(RF24_250KBPS);  // Reduce Power Consumption
-  radioTx.setChannel(TX_CHANNEL);  // 2.508 Ghz - Above most Wifi Channels
-  radioTx.openWritingPipe(addressTx);
-  radioTx.stopListening();
+  radioTx.setPALevel(RF24_PA_LOW);  // RF24_PA_MAX is default.
+  radioTx.setChannel(TX_CHANNEL);
+  radioTx.setDataRate(RF24_250KBPS);
+  radioTx.setPayloadSize(sizeof(data)); // float datatype occupies 4 bytes
+  radioTx.openWritingPipe(address[0]);     // always uses pipe 0
+//  radioTx.setAutoAck(false);
+  radioTx.stopListening(); // put radio in TX mode
 
   if (debug) {
     printf_begin();
     radioTx.printDetails();
+    radioTx.printPrettyDetails();
     Serial.print("TX Connection Status: ");
     Serial.println(radioTx.isChipConnected());
   }
@@ -63,23 +87,6 @@ void setup() {
     TX_STATUS = true;
 
   /**
-     radioRx Set-Up
-  */
-  radioRx.begin();
-  radioRx.setPALevel(RF24_PA_MIN);  // Reduce Power Consumption
-  radioRx.setDataRate(RF24_250KBPS);  // Reduce Power Consumption
-  radioRx.setChannel(RX_CHANNEL);  // 2.508 Ghz - Above most Wifi Channels
-  radioRx.openReadingPipe(0, addressRx);
-  radioRx.startListening();
-
-  if (debug) {
-    printf_begin();
-    radioRx.printDetails();
-    Serial.print("RX Connection Status: ");
-    Serial.println(radioRx.isChipConnected());
-  }
-
-  /**
      RX Status
   */
   if (radioRx.isChipConnected())
@@ -88,6 +95,8 @@ void setup() {
   /**
      Activate the Arduino internal pull-up resistors
   */
+  pinMode(leftSwitch, INPUT_PULLUP);
+  pinMode(rightSwitch, INPUT_PULLUP);
   pinMode(VOLTAGE_PIN, INPUT);
   pinMode(8, INPUT);
   pinMode(10, INPUT_PULLUP);
@@ -106,7 +115,7 @@ void setup() {
      TFT INIT
   */
   pinMode(TFT_LCD, OUTPUT);
-  analogWrite(TFT_LCD, 40);
+  analogWrite(TFT_LCD, 35);
 
   tft.begin();
   tft.fillScreen(BLACK);
@@ -122,29 +131,20 @@ void setup() {
 #include "tft_update.h"
 
 void loop() {
+  currentTime = millis();
+
   /**
      Read the voltage
   */
   voltageTX = analogRead(VOLTAGE_PIN) * (5 / 1023.00);
 
-  /* Transmission Message */
+  /* Receive Message */
   if (radioRx.available()) {
     radioRx.read(&dataRx, sizeof(packageRx));
-
     /**
        If data received, update the lastReceiveTime
     */
     lastReceiveTime = millis();
-
-    /**
-       If current time is more then .5 second since we have recived the last data, that means we have lost connection
-    */
-    if ( currentTime - lastReceiveTime > 500 ) {
-      /**
-         Either use the default data or adjust to some safe values based on your device
-      */
-      defaultValues();
-    }
   }
 
   /**
@@ -259,14 +259,17 @@ void loop() {
   // Red Button
   data.rb = digitalRead(button2);
 
-  // RC transmitter time
-  data.transmitterTime = millis();
-
-  if (debug)
+  if (debug and debug_tx)
     serialDebug(data);
 
   // Send the whole data from the structure to the receiver
   radioTx.write(&data, sizeof(package));
 
+
   lcdUpdate(data, voltageTX, dataRx);
+
+  if ( currentTime - lastReceiveTime > 3000 ) {
+    defaultValuesRx();
+  }
+
 }

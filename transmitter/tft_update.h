@@ -24,7 +24,7 @@ void lcdUpdate(
     p2 = data.p2;
   }
 
-  if (abs(vTX - voltage) > 0.25 or abs(vRX - dataRx.voltage) > 0.25) {
+  if (abs(vTX - voltage) > 0.3 or abs(vRX - dataRx.voltage) > 0.3) {
     /*  Voltage Tx  */
     tft.setTextSize(1.4);
     tft.setTextColor(GREY, BLACK);
@@ -42,13 +42,8 @@ void lcdUpdate(
     tft.setTextColor(GREY, BLACK);
     tft.print("Voltage RX: ");
     tft.setTextColor(SKY, BLACK);
-    if (dataRx.voltage > 1) {
-      tft.print(valRound(dataRx.voltage));
-    } else {
-      tft.print("0.00");
-    }
+    tft.print(valRound(dataRx.voltage));
     tft.print("v");
     vRX = dataRx.voltage;
   }
-
 }

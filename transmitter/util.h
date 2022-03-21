@@ -68,6 +68,12 @@ void defaultValues() {
   // RX & TX Status
   RX_STATUS = false;
   TX_STATUS = false;
+
+}
+
+void defaultValuesRx() {
+  //RX
+  dataRx.voltage = 0;
 }
 
 /**

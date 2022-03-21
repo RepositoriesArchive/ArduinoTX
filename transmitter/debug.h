@@ -100,3 +100,12 @@ void serialDebug(package data) {
 
   Serial.println();
 }
+
+void serialDebugRx(packageRx dataRx) {
+
+  Serial.print("Voltage: ");
+  Serial.print(dataRx.voltage);
+  Serial.print(";");
+
+  Serial.println();
+}

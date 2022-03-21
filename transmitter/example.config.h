@@ -2,7 +2,9 @@
    Enable/Disable the debug mode
 */
 
-bool debug = true;
+bool debug = false;
+bool debug_rx = false;
+bool debug_tx = false;
 
 /**
    Colours
@@ -18,7 +20,7 @@ bool debug = true;
    Define the current PINS - Read the buttons
 */
 // Left Switch
-#define leftSwitch 8
+#define leftSwitch A4
 
 // Left Pot
 #define leftPot 6
@@ -42,7 +44,7 @@ bool leftThumbReverseLeftRight = false;
 #define leftButton 17
 
 // Right Switch
-#define rightSwitch 9
+#define rightSwitch A5
 
 // Right Pot
 #define rightPot 4
@@ -108,17 +110,17 @@ int TextColor = WHITE;
 */
 #define RX_CE 13
 #define RX_CSN 14
-#define RX_CHANNEL 108  // up to 125, 2.508 Ghz - Above most Wifi Channels
+#define RX_CHANNEL 105
 bool RX_STATUS;
+
 
 #define TX_CE 23
 #define TX_CSN 22
-#define TX_CHANNEL 108  // up to 125, 2.508 Ghz - Above most Wifi Channels
+#define TX_CHANNEL 106
 bool TX_STATUS;
 
 //TX Setup
-const byte addressTx[6] = "00001";
-const byte addressRx[6] = "00001";
+uint8_t address[][6] = {"A1", "B1", "A2", "B2"};
 char textRx[32] = "";
 
 unsigned long lastReceiveTime = 0;
@@ -196,8 +198,8 @@ package data;
 
 // Store the current values
 struct packageRx {
-  // Left Switch
   byte voltage;
+  byte voltage_2;
 };
 
 // Create a variable with the above structure
