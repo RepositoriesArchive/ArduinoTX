@@ -37,11 +37,12 @@ void drawDashBoard()  {
   tft.print("0.00");
   tft.print("v");
 
-  /*  RX Status  */
-  tft.setTextColor(GREY);
+  /*  TX Status  */
   tft.setCursor(50, 180);
-  tft.print("RX Status: ");
-  if (RX_STATUS) {
+  tft.setTextColor(GREY);
+  tft.print("TX Status: ");
+  tft.setTextColor(SKY);
+  if (TX_STATUS) {
     tft.setTextColor(GREEN);
     tft.print("ON");
   } else {
@@ -51,12 +52,11 @@ void drawDashBoard()  {
 
   tft.print("  "); // Separator
 
-  /*  TX Status  */
+  /*  RX Status  */
   tft.setCursor(180, 180);
   tft.setTextColor(GREY);
-  tft.print("TX Status: ");
-  tft.setTextColor(SKY);
-  if (TX_STATUS) {
+  tft.print("RX Status: ");
+  if (RX_STATUS) {
     tft.setTextColor(GREEN);
     tft.print("ON");
   } else {

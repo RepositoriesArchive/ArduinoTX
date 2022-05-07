@@ -10,7 +10,7 @@ void lcdUpdate(
   package data, float voltage, packageRx dataRx
 ) {
 
-  if ( (abs(p1 - data.p1) > 2) or (abs(p2 - data.p2) > 2) ) {
+  if ( (abs(p1 - data.p1) > 1) or (abs(p2 - data.p2) > 1) ) {
     tft.setTextSize(7);
     tft.setTextColor(WHITE, BLACK);
     tft.setCursor(18, 70);

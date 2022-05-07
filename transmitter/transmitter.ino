@@ -115,7 +115,7 @@ void setup() {
      TFT INIT
   */
   pinMode(TFT_LCD, OUTPUT);
-  analogWrite(TFT_LCD, 35);
+  analogWrite(TFT_LCD, 100);
 
   tft.begin();
   tft.fillScreen(BLACK);
